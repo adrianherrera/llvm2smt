@@ -66,6 +66,7 @@ let bpr_attribute b = function
   | Nonnull          -> bprintf b "nonnull"
   | Readnone         -> bprintf b "readnone"
   | Readonly         -> bprintf b "readonly"
+  | Writeonly        -> bprintf b "writeonly"
   | Returned         -> bprintf b "returned"
   | Signext          -> bprintf b "signext"
   | Sret             -> bprintf b "sret"
@@ -73,6 +74,7 @@ let bpr_attribute b = function
   | Attrgrp x        -> bprintf b "#%d" x
   | Attr(x, None)    -> bprintf b "%s" x
   | Attr(x, Some y)  -> bprintf b "%s=%s" x y
+  | Argmemonly       -> bprintf b "argmemonly"
   | Alignstack x     -> bprintf b "alignstack = (%d)" x
   | Alwaysinline     -> bprintf b "alwaysinline"
   | Builtin          -> bprintf b "builtin"

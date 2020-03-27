@@ -33,6 +33,8 @@ let _ =
      "localdynamic"           ,Kw_localdynamic;
      "initialexec"            ,Kw_initialexec;
      "localexec"              ,Kw_localexec;
+     "dso_preemptable"        ,Kw_dso_preemptable;
+     "dso_local"              ,Kw_dso_local;
      "zeroinitializer"        ,Kw_zeroinitializer;
      "undef"                  ,Kw_undef;
      "null"                   ,Kw_null;
@@ -43,6 +45,7 @@ let _ =
      "unwind"                 ,Kw_unwind;
      "deplibs"                ,Kw_deplibs (* FIXME: Remove in 4.0. *);
      "datalayout"             ,Kw_datalayout;
+     "source_filename"        ,Kw_source_filename;
      "volatile"               ,Kw_volatile;
      "atomic"                 ,Kw_atomic;
      "unordered"              ,Kw_unordered;
@@ -96,6 +99,7 @@ let _ =
      "preserve_allcc"         ,Kw_preserve_allcc;
      "cc"                     ,Kw_cc;
      "c"                      ,Kw_c;
+     "argmemonly"             ,Kw_argmemonly;
      "attributes"             ,Kw_attributes;
      "alwaysinline"           ,Kw_alwaysinline;
      "builtin"                ,Kw_builtin;
@@ -121,6 +125,7 @@ let _ =
      "optsize"                ,Kw_optsize;
      "readnone"               ,Kw_readnone;
      "readonly"               ,Kw_readonly;
+     "writeonly"              ,Kw_writeonly;
      "returned"               ,Kw_returned;
      "nonnull"                ,Kw_nonnull;
      "dereferenceable"        ,Kw_dereferenceable;

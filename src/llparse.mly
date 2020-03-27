@@ -5,6 +5,7 @@ type toplevel =
   | Asm of string
   | Target of string
   | Datalayout of string
+  | Source_filename of string
   | Deplibs of string list
   | Typ of Llvm.var * Llvm.typ option
   | Global of Bc.ginfo
@@ -38,6 +39,7 @@ let process_toplevels t =
     Bc.ctarget=None;
     Bc.dl= Dl.zero_datalayout;
     Bc.cdatalayout=None;
+    Bc.csource_filename=None;
     Bc.casms=[];
     Bc.cfuns=[];
     Bc.ctyps=[];
@@ -60,6 +62,9 @@ let process_toplevels t =
 	    cu.Bc.cdatalayout <- Some x;
 	    Dl.dl_parse x cu.Bc.dl;
 	  end
+    | Source_filename x ->
+        if cu.Bc.csource_filename<>None then failwith "compilation unit with multiple source filenames"
+        else cu.Bc.csource_filename <- Some x
     | Deplibs _ -> () (* parses but ignored in LLVM 3.4, to be removed in 4.0 *)
     | Typ(x,y) -> cu.Bc.ctyps <- (x,y)::cu.Bc.ctyps
     | Global x -> cu.Bc.cglobals <- x::cu.Bc.cglobals
@@ -135,6 +140,8 @@ let process_toplevels t =
 %token Kw_external
 %token Kw_thread_local
 %token Kw_localdynamic
+%token Kw_dso_preemptable
+%token Kw_dso_local
 %token Kw_initialexec
 %token Kw_localexec
 %token Kw_zeroinitializer
@@ -147,6 +154,7 @@ let process_toplevels t =
 %token Kw_unwind
 %token Kw_deplibs
 %token Kw_datalayout
+%token Kw_source_filename
 %token Kw_volatile
 %token Kw_atomic
 %token Kw_unordered
@@ -201,6 +209,7 @@ let process_toplevels t =
 %token Kw_preserve_allcc
 %token Kw_cc
 %token Kw_c
+%token Kw_argmemonly
 %token Kw_attributes
 %token Kw_alwaysinline
 %token Kw_builtin
@@ -227,6 +236,7 @@ let process_toplevels t =
 %token Kw_optsize
 %token Kw_readnone
 %token Kw_readonly
+%token Kw_writeonly
 %token Kw_returned
 %token Kw_returns_twice
 %token Kw_signext
@@ -346,51 +356,57 @@ toplevel:
 | Kw_module Kw_asm StringConstant              { Asm $3 }
 | Kw_target Kw_triple Equal StringConstant     { Target $4 }
 | Kw_target Kw_datalayout Equal StringConstant { Datalayout $4}
+| Kw_source_filename Equal StringConstant      { Source_filename $3 }
 | Kw_deplibs Equal Lsquare string_list Rsquare { Deplibs $4 }
 | LocalVarID Equal Kw_type Kw_opaque           { Typ($1, None) }
 | LocalVarID Equal Kw_type typ                 { Typ($1, Some $4) }
 | LocalVar Equal Kw_type Kw_opaque             { Typ($1, None) }
 | LocalVar Equal Kw_type typ                   { Typ($1, Some $4) }
-| global_eq external_linkage opt_visibility opt_dll_storageclass opt_thread_local
+| global_eq external_linkage opt_preemption_specifier opt_visibility opt_dll_storageclass opt_thread_local
     opt_addrspace opt_unnamed_addr opt_externally_initialized
     constant_or_global typ opt_section_align
                                                { Global {Bc.gname = $1;
                                                          Bc.glinkage = Some $2;
-                                                         Bc.gvisibility = $3;
-                                                         Bc.gstorageclass = $4;
-                                                         Bc.gthread_local = $5;
-                                                         Bc.gaddrspace = $6;
-                                                         Bc.gunnamed_addr = $7;
-                                                         Bc.gexternally_initialized = $8;
-                                                         Bc.gconstant = $9;
-                                                         Bc.gtyp = $10;
+                                                         Bc.gpreemption = $3;
+                                                         Bc.gvisibility = $4;
+                                                         Bc.gstorageclass = $5;
+                                                         Bc.gthread_local = $6;
+                                                         Bc.gaddrspace = $7;
+                                                         Bc.gunnamed_addr = $8;
+                                                         Bc.gexternally_initialized = $9;
+                                                         Bc.gconstant = $10;
+                                                         Bc.gtyp = $11;
                                                          Bc.gvalue = None;
-                                                         Bc.gsection = fst $11;
-                                                         Bc.galign = snd $11;}
+                                                         Bc.gsection = fst $12;
+                                                         Bc.galign = snd $12;}
                                                }
-| global_eq non_external_linkage opt_visibility opt_dll_storageclass opt_thread_local
+| global_eq non_external_linkage opt_preemption_specifier opt_visibility opt_dll_storageclass opt_thread_local
     opt_addrspace opt_unnamed_addr opt_externally_initialized
     constant_or_global typ value opt_section_align
                                                { Global {Bc.gname = $1;
                                                          Bc.glinkage = $2;
-                                                         Bc.gvisibility = $3;
-                                                         Bc.gstorageclass = $4;
-                                                         Bc.gthread_local = $5;
-                                                         Bc.gaddrspace = $6;
-                                                         Bc.gunnamed_addr = $7;
-                                                         Bc.gexternally_initialized = $8;
-                                                         Bc.gconstant = $9;
-                                                         Bc.gtyp = $10;
-                                                         Bc.gvalue = Some $11;
-                                                         Bc.gsection = fst $12;
-                                                         Bc.galign = snd $12;}
+                                                         Bc.gpreemption = $3;
+                                                         Bc.gvisibility = $4;
+                                                         Bc.gstorageclass = $5;
+                                                         Bc.gthread_local = $6;
+                                                         Bc.gaddrspace = $7;
+                                                         Bc.gunnamed_addr = $8;
+                                                         Bc.gexternally_initialized = $9;
+                                                         Bc.gconstant = $10;
+                                                         Bc.gtyp = $11;
+                                                         Bc.gvalue = Some $12;
+                                                         Bc.gsection = fst $13;
+                                                         Bc.galign = snd $13;}
                                                }
-| global_eq external_linkage opt_visibility Kw_alias opt_linkage aliasee
-    { Alias({Bc.aname=$1; Bc.avisibility=$3; Bc.alinkage=$5; Bc.aaliasee=$6}) }
-| global_eq non_external_linkage opt_visibility Kw_alias opt_linkage aliasee
-    { Alias({Bc.aname=$1; Bc.avisibility=$3; Bc.alinkage=$5; Bc.aaliasee=$6}) }
+| global_eq external_linkage opt_preemption_specifier opt_visibility Kw_alias opt_linkage aliasee
+    { Alias({Bc.aname=$1; Bc.apreemption=$3; Bc.avisibility=$4; Bc.alinkage=$6; Bc.aaliasee=$7}) }
+| global_eq non_external_linkage opt_preemption_specifier opt_visibility Kw_alias opt_linkage aliasee
+    { Alias({Bc.aname=$1; Bc.apreemption=$3; Bc.avisibility=$4; Bc.alinkage=$6; Bc.aaliasee=$7}) }
 | Exclaim APInt Equal typ Exclaim Lbrace mdnodevector Rbrace
     { MDNodeDefn({Bc.mdid=int_of_string $2; Bc.mdtyp=$4; Bc.mdcontents=$7}) }
+/* Metadata types were removed in LLVM 3.6 */
+| Exclaim APInt Equal Exclaim Lbrace mdnodevector Rbrace
+    { MDNodeDefn({Bc.mdid=int_of_string $2; Bc.mdtyp=Llvm.Metadata; Bc.mdcontents=$6}) }
 | MetadataVar Equal Exclaim Lbrace mdlist Rbrace                             { MDVarDefn($1, $5) }
 | Kw_attributes AttrGrpID Equal Lbrace group_attributes Rbrace               { Attrgrp($2, $5) }
 ;
@@ -400,7 +416,7 @@ global_eq: /* may want to allow empty here (per llvm parser) but haven't seen it
 ;
 aliasee:
 | Kw_bitcast       Lparen type_value Kw_to typ Rparen         { Bc.A_bitcast($3, $5) }
-| Kw_getelementptr opt_inbounds Lparen type_value_list Rparen { Bc.A_getelementptr($2, $4) }
+| Kw_getelementptr opt_inbounds Lparen typ Comma type_value_list Rparen { Bc.A_getelementptr($2, $6) }
 | type_value                                                  { Bc.A_typ_value $1 }
 ;
 string_list:
@@ -417,13 +433,18 @@ mdnodevector:
 | Kw_null Comma mdnodevector    { None::$3 }
 | type_value                    { [Some $1] }
 | type_value Comma mdnodevector { (Some $1)::$3 }
+/* Metadata types were removed in LLVM 3.6 */
+| Exclaim APInt                 { [Some (Llvm.Metadata, Llvm.Mdnode(int_of_string $2))] }
+| Exclaim APInt Comma mdnodevector { (Some (Llvm.Metadata, Llvm.Mdnode(int_of_string $2)))::$4 }
+| Exclaim StringConstant           { [Some (Llvm.Metadata, Llvm.Mdstring $2)] }
+| Exclaim StringConstant Comma mdnodevector { (Some (Llvm.Metadata, Llvm.Mdstring $2))::$4 }
 ;
 constant_or_global:
 | Kw_constant { true }
 | Kw_global   { false }
 ;
 function_header:
-| opt_linkage opt_visibility opt_dll_storageclass opt_callingconv return_attributes
+| opt_linkage opt_preemption_specifier opt_visibility opt_dll_storageclass opt_callingconv return_attributes
  typ global_name argument_list opt_unnamed_addr function_attributes opt_section
  opt_align opt_gc opt_prefix
                              {
@@ -432,19 +453,20 @@ function_header:
 				 Bc.cfg_predecessors =  Hashtbl.create 11;
 				 Bc.cfg_successors =  Hashtbl.create 11;
 				 Bc.flinkage = $1;
-                                 Bc.fvisibility = $2;
-                                 Bc.fstorageclass = $3;
-                                 Bc.fcallingconv = $4;
-                                 Bc.freturnattrs = $5;
-                                 Bc.freturntyp = $6;
-                                 Bc.fname = $7;
-                                 Bc.fparams = $8;
-                                 Bc.funnamed_addr = $9;
-                                 Bc.fattrs = $10;
-                                 Bc.fsection = $11;
-                                 Bc.falign = $12;
-                                 Bc.fgc = $13;
-                                 Bc.fprefix = $14;
+                                 Bc.fpreemption = $2;
+                                 Bc.fvisibility = $3;
+                                 Bc.fstorageclass = $4;
+                                 Bc.fcallingconv = $5;
+                                 Bc.freturnattrs = $6;
+                                 Bc.freturntyp = $7;
+                                 Bc.fname = $8;
+                                 Bc.fparams = $9;
+                                 Bc.funnamed_addr = $10;
+                                 Bc.fattrs = $11;
+                                 Bc.fsection = $12;
+                                 Bc.falign = $13;
+                                 Bc.fgc = $14;
+                                 Bc.fprefix = $15;
                                  Bc.fblocks = [];}
                              }
 ;
@@ -593,7 +615,7 @@ value:
 | Kw_and                        Lparen type_value Comma type_value Rparen                   { Llvm.And($3, $5) }
 | Kw_or                         Lparen type_value Comma type_value Rparen                   { Llvm.Or($3, $5) }
 | Kw_xor                        Lparen type_value Comma type_value Rparen                   { Llvm.Xor($3, $5) }
-| Kw_getelementptr opt_inbounds Lparen type_value_list Rparen                               { Llvm.Getelementptr($2, $4) }
+| Kw_getelementptr opt_inbounds Lparen typ Comma type_value_list Rparen                     { Llvm.Getelementptr($2, $6) }
 | Kw_shufflevector              Lparen type_value_list Rparen                               { Llvm.Shufflevector  $3 }
 | Kw_insertelement              Lparen type_value_list Rparen                               { Llvm.Insertelement  $3 }
 | Kw_extractelement             Lparen type_value_list Rparen                               { Llvm.Extractelement $3 }
@@ -718,7 +740,7 @@ instruction:
 | local_eq Kw_inttoptr type_value Kw_to typ               instruction_metadata { Some $1, Llvm.Inttoptr($3, $5, $6) }
 | local_eq Kw_ptrtoint type_value Kw_to typ               instruction_metadata { Some $1, Llvm.Ptrtoint($3, $5, $6) }
 | local_eq Kw_va_arg type_value Comma typ                 instruction_metadata { Some $1, Llvm.Va_arg($3, $5, $6) }
-| local_eq Kw_getelementptr opt_inbounds type_value_LIST_metadata              { Some $1, Llvm.Getelementptr($3, fst $4, snd $4) }
+| local_eq Kw_getelementptr opt_inbounds typ Comma type_value_LIST_metadata    { Some $1, Llvm.Getelementptr($3, fst $6, snd $6) }
 | local_eq Kw_extractelement type_value_LIST_metadata                          { Some $1, Llvm.Extractelement(fst $3, snd $3) }
 | local_eq Kw_insertelement type_value_LIST_metadata                           { Some $1, Llvm.Insertelement(fst $3, snd $3) }
 | local_eq Kw_shufflevector type_value_LIST_metadata                           { Some $1, Llvm.Shufflevector(fst $3, snd $3) }
@@ -731,8 +753,8 @@ instruction:
 | opt_local opt_tail Kw_call opt_callingconv return_attributes typ value Lparen param_list Rparen call_attributes
                                                           instruction_metadata { $1, Llvm.Call($2, $4, $5, $6, $7, $9, $11, $12) }
 | local_eq Kw_alloca alloc_metadata                                            { Some $1, $3 }
-| local_eq Kw_load opt_atomic opt_volatile type_value scopeandordering
-                                                                align_metadata { Some $1, Llvm.Load($3, $4, $5, $6, fst $7, snd $7) }
+| local_eq Kw_load opt_atomic opt_volatile typ Comma type_value scopeandordering
+                                                                align_metadata { Some $1, Llvm.Load($3, $4, $7, $8, fst $9, snd $9) }
 | Kw_store opt_atomic opt_volatile type_value Comma type_value scopeandordering
                                                                 align_metadata { None, Llvm.Store($2, $3, $4, $6, $7, fst $8, snd $8) }
 | local_eq Kw_cmpxchg opt_volatile type_value Comma type_value Comma type_value opt_singlethread ordering ordering
@@ -836,6 +858,7 @@ function_attribute:
 | AttrGrpID                                { Llvm.Attrgrp($1) }
 | StringConstant Equal StringConstant      { Llvm.Attr($1, Some $3) }
 | Kw_alignstack Equal Lparen APInt Rparen  { Llvm.Alignstack(int_of_string $4) }
+| Kw_argmemonly                            { Llvm.Argmemonly       }
 | Kw_alwaysinline                          { Llvm.Alwaysinline     }
 | Kw_builtin                               { Llvm.Builtin          }
 | Kw_cold                                  { Llvm.Cold             }
@@ -870,6 +893,7 @@ group_attributes:
 group_attribute:
 | StringConstant                      { Llvm.Attr($1, None) }
 | StringConstant Equal StringConstant { Llvm.Attr($1, Some $3) }
+| Kw_argmemonly                       { Llvm.Argmemonly      }
 | Kw_align Equal APInt                { Llvm.Align(int_of_string $3) }
 | Kw_alignstack Equal APInt           { Llvm.Alignstack(int_of_string $3) }
 | Kw_alwaysinline                     { Llvm.Alwaysinline    }
@@ -922,6 +946,7 @@ param_attribute:
 | Kw_nonnull                              { Llvm.Nonnull   }
 | Kw_readnone                             { Llvm.Readnone  }
 | Kw_readonly                             { Llvm.Readonly  }
+| Kw_writeonly                            { Llvm.Writeonly }
 | Kw_returned                             { Llvm.Returned  }
 | Kw_signext                              { Llvm.Signext   }
 | Kw_sret                                 { Llvm.Sret      }
@@ -963,6 +988,11 @@ opt_thread_local:
 | Kw_thread_local Lparen Kw_localdynamic Rparen { Some (Some Bc.Localdynamic) }
 | Kw_thread_local Lparen Kw_initialexec Rparen  { Some (Some Bc.Initialexec) }
 | Kw_thread_local Lparen Kw_localexec Rparen    { Some (Some Bc.Localexec) }
+;
+opt_preemption_specifier:
+| /* empty */        { Some Bc.Dso_preemptable }
+| Kw_dso_preemptable { Some Bc.Dso_preemptable }
+| Kw_dso_local       { Some Bc.Dso_local }
 ;
 opt_addrspace:
 | /* empty */                      { None }

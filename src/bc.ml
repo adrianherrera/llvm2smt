@@ -40,6 +40,10 @@ type linkage =
   | Appending
   | Common
 
+type preemption_specifier =
+  | Dso_preemptable
+  | Dso_local
+
 type visibility =
   | Default
   | Hidden
@@ -124,6 +128,7 @@ type finfo = {
   cfg_predecessors: cfg_neighbors;
   cfg_successors: cfg_neighbors;
   mutable flinkage: linkage option;
+  mutable fpreemption: preemption_specifier option;
   mutable fvisibility: visibility option;
   mutable fstorageclass: dll_storageclass option;
   mutable fcallingconv: callingconv option;
@@ -149,6 +154,7 @@ type thread_local =
 type ginfo = {
   mutable gname: var;
   mutable glinkage: linkage option;
+  mutable gpreemption: preemption_specifier option;
   mutable gvisibility: visibility option;
   mutable gstorageclass: dll_storageclass option;
   mutable gthread_local: thread_local option option;
@@ -167,6 +173,7 @@ type ainfo = {
   aname: var;
   avisibility: visibility option;
   alinkage: linkage option;
+  apreemption: preemption_specifier option;
   aaliasee: aliasee
 }
 
@@ -183,6 +190,7 @@ type cunit = {
   lcontext: vtbl; (* symbols local to the cu (e.g., types and structs) *)
   dl: Dl.datalayout;  (* deconstruction of the (c)datalayout string  *)
   mutable cdatalayout: string option;
+  mutable csource_filename: string option;
   mutable ctarget: string option;
   mutable casms: string list;
   mutable ctyps: (var * typ option) list;

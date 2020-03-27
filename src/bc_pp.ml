@@ -42,6 +42,10 @@ let bpr_storageclass b = function
   | Dllimport -> bprintf b "dllimport"
   | Dllexport -> bprintf b "dllexport"
 
+let bpr_preemption_specifier b = function
+  | Dso_preemptable -> bprintf b "dso_preemptable"
+  | Dso_local       -> bprintf b "dso_local"
+
 let bpr_linkage b = function
   | External             -> bprintf b "external"
   | Private              -> bprintf b "private"
@@ -62,9 +66,10 @@ let bpr_visibility b = function
 
 
 let bpr_global b g =
-  bprintf b "%a = %a%a%a%a%a%a%a%a%a%a%a%a\n"
+  bprintf b "%a = %a%a%a%a%a%a%a%a%a%a%a%a%a\n"
     bpr_var g.gname
     (opt_after " " bpr_linkage) g.glinkage
+    (opt_after " " bpr_preemption_specifier) g.gpreemption
     (opt_after " " bpr_visibility) g.gvisibility
     (opt_after " " bpr_storageclass) g.gstorageclass
     (opt_after " " bpr_thread_local) g.gthread_local
@@ -82,6 +87,7 @@ let bpr_alias b a =
   (match a.avisibility with None -> () | Some x -> bprintf b "%a " bpr_visibility x);
   bprintf b "alias ";
   (match a.alinkage with None -> () | Some x -> bprintf b "%a " bpr_linkage x);
+  (match a.apreemption with None -> () | Some x -> bprintf b "%a " bpr_preemption_specifier x);
   (match a.aaliasee with
   | A_bitcast(x, y) -> bprintf b "bitcast(%a to %a)\n" bpr_typ_value x bpr_typ y
   | A_getelementptr(inbounds, x) -> bprintf b "getelementptr%a(%a)\n" (yes " inbounds ") inbounds bpr_typ_value_list x
@@ -148,10 +154,11 @@ let string_of_fparams fparams =
 
 let bpr_function b cu f =
   bprintf b "\n";
-  bprintf b "%a %a%a%a%a%a%a %a%a%a%a%a%a%a%a"
+  bprintf b "%a %a%a%a%a%a%a%a %a%a%a%a%a%a%a%a"
     (yesno "declare" "define") (f.fblocks = [])
 
     (opt_after " " bpr_linkage) f.flinkage
+    (opt_after " " bpr_preemption_specifier) f.fpreemption
     (opt_after " " bpr_visibility) f.fvisibility
     (opt_after " " bpr_storageclass) f.fstorageclass
     (opt_after " " bpr_callingconv) f.fcallingconv
@@ -221,6 +228,9 @@ let bpr_cu b cu =
   (match cu.cdatalayout with
   | None -> ()
   | Some x -> bprintf b "target datalayout = %s\n" x);
+  (match cu.csource_filename with
+  | None -> ()
+  | Some x -> bprintf b "source_filename = %s\n" x);
   (match cu.ctarget with
   | None -> ()
   | Some x -> bprintf b "target triple = %s\n" x);
